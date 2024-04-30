@@ -1,6 +1,7 @@
 import React,{useCallback, useEffect,useState} from "react";
 import { useSocket } from "../providers/Socket";
 import ReactPlayer from 'react-player'
+import Peer from "../Services/Peer";
 
 
 const RoomPage =()=>{
@@ -17,20 +18,29 @@ const handleCallUser =useCallback(async()=>{
 
     //To see what is navigator
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
-    .then((stream) => {
-      
-        setMyStream(stream);
-    })
-    .catch((error) => {
-      console.error("Error accessing media device:", error);
-      // Handle error, display a message to the user
-    });
+    const offer= await Peer.getOffer;
+    socket.emit("user:call",{to:remoteSocketId,offer})
+   setMyStream(stream);
+   
+   
 
 },[])
 
+const handleIncommingCall =useCallback(async({from,offer})=>{
+    setRemoteId(from)
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+    setMyStream(stream)
+    console.log("In comming call from ",from,offer)
+    const ans= await Peer.getAswer(offer)
+    socket.emit("call:accepted",{to:from,ans})
+},[])
+
+const handleCallAccepted=useCallback(({}))
+
 useEffect(()=>{
     socket.on("user:joined",handleUserJoined)
-
+    socket.on("incoming:call",handleIncommingCall)
+    socket.on("call:accepted",handleCallAccepted)
     return ()=>{
         socket.off("user:joined",handleUserJoined)
     }
@@ -42,7 +52,7 @@ useEffect(()=>{
         <h4>{remoteSocketId? 'Connected ':'No one in room'}</h4>
         {remoteSocketId?(<button onClick={handleCallUser}>Call</button>):""}
         {
-            myStream &&  <ReactPlayer playing muted={true} height="400px" width="400px" url={myStream}/>
+            myStream && <ReactPlayer playing muted={true} height="400px" width="400px" url={myStream}/>
         }
         </>
     )
